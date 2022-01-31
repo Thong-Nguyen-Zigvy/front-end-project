@@ -1,12 +1,21 @@
-import './App.css';
 
-function App() {
+import ListContentShift from './module/shifts/containers/ListContentShift';
+import ShiftDetail from './module/shifts/containers/ShiftDetail';
+
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+import {GlobalStyle} from './stylesheets/GlobalStyle';
+
+
+const App = () => {
   return (
-    <div>
-      <header>
-          Have some jalebi fafda. They are yummy! 😋
-      </header>
-    </div>
+  <Router>
+      <Routes>
+        <Route path="/" element={<ListContentShift />} />
+        <Route path="/:shiftId" element={<ShiftDetail />} />
+      </Routes>
+    <GlobalStyle />
+  </Router>
   );
 }
 
