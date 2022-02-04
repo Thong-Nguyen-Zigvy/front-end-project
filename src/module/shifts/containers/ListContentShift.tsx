@@ -1,8 +1,3 @@
-import { useState } from 'react';
-import { useQuery } from 'react-query';
-import { getShifts } from '../../../utils/apiUtils';
-import moment from 'moment';
-import Moment from 'react-moment';
 import { 
   ListContentStyled, 
   ListWrapperStyled, 
@@ -13,247 +8,155 @@ import {
   ShiftLocationWrapper,
   UserInfoImgStyled
 } from '../stylesheets/ListContentShift.styles';
-import {HeaderStyled, ImageWrapper} from '../stylesheets/Shift.styles';
-import {ButtonStyled} from "../../../stylesheets/Button";
-import UserPhoto from './hii.jpg' 
-
-
-export type Contact = {
-  name: string;
-  phone: string;
-  createdAt: string;
-}
-
-export type Professional = {
-  id: string;
-  shiftId: string;
-  proId: string;
-  currency: string;
-  orgPay: number;
-  cancelledAt: any;
-  proCancelledAt: any;
-  attendanceSource: any;
-  dtstart: string;
-  dtend: string;
-  pro: {
-    id: string;
-    avatar: string;
-    firstName: string;
-    lastName: string;
-  },
-  status: string;
-}
-
-export type Location = {
-  name: string;
-  address: string;
-  parkingType: string;
-  locationInstructions: string;
-  lat: number;
-  lon: number;
-  locality: string;
-  country: string;
-  administrativeAreaLevelOne: string;
-  administrativeAreaLevelTwo: string;
-  administrativeAreaLevelThree: string;
-  postalCode: string;
-  timezone: string;
-  createdAt: string;
-} 
-
-export type ShiftItemType = {
-  id: string;
-  groupId: string;
-  position: string;
-  subcategory: string;
-  experienceLevel: number;
-  dtstart: string;
-  dtend: string;
-  timezone: string;
-  unpaidBreakDuration: number;
-  locationName: string;
-  slots: number;
-  attire: string;
-  additionalRequirements: string[];
-  additionalInstructions: string;
-  taskInstructions: string;
-  basePrice: number;
-  currency: string;
-  pricingType: string;
-  bookingFee: number;
-  markupFee: number;
-  priceCeiling: number;
-  invoiceId: string;
-  openAvailability: boolean;
-  contacts: Contact[];
-  proRequests: any[];
-  matched: Professional[];
-  matchingGroup: any;
-  location: Location;
-  availableSlots: number;
-}
+import {
+  HeaderStyled,
+  ImageWrapper,
+  LoadingOverlayComponentStyled,
+  NodataWrapper
+} from '../stylesheets/Shift.styles';
+import { ButtonStyled } from "../../../stylesheets/Button";
+import { FORMAT_DATE, FORMAT_FULL_DATE_MONTH, Professional } from "../../../utils/ENUMS";
+import moment from "moment-timezone";
+import { useNavigate } from 'react-router-dom';
+import { useGetShifts } from "../hooks/shifts.hooks";
+import loadingGif from "../../../assets/images/loading.gif";
+import Notification from '../../../utils/Notification';
 
 const ListContentShift = () => {
-  const { data, isLoading, error } = useQuery<ShiftItemType[]>('shifts', getShifts);
-    const dateTimedata = data?.map(shift => {
-      const dateStart = moment(shift.dtstart);
-      const dateEnd = moment(shift.dtend);
-      return {dateStart: {day: dateStart.format('dddd'),do: dateStart.format('Do'), month: dateStart.format('MMMM'), year: dateStart.format('YYYY')}, dateEnd: {day: dateEnd.format('dddd'),do: dateEnd.format('Do'), month: dateEnd.format('MMMM'), year: dateEnd.format('YYYY')}};
+  const navigate = useNavigate();
+  const { data: shifts, isLoading, error } = useGetShifts();
+
+  const currentDate = moment();
+
+  const goToDetailPage = (id: string) => {
+    navigate(`/${id}`);
+  }
+  const goToProfList = (id: string) => {
+    navigate(`/${id}/list`);
+  }
+  
+  const renderShiftDate = (dateStart: moment.Moment, index: number) => {
+    if(currentDate.format(FORMAT_DATE) === dateStart.format(FORMAT_DATE)){
+      return (
+        <DateHeaderStyled first={index === 0} key={dateStart.format(FORMAT_DATE)}>
+          Today - {dateStart.format(FORMAT_FULL_DATE_MONTH)}
+        </DateHeaderStyled>
+      );
+    }
+    return (
+      <DateHeaderStyled first={index === 0} key={dateStart.format(FORMAT_DATE)}>
+        {dateStart.format(FORMAT_FULL_DATE_MONTH)}
+      </DateHeaderStyled>
+    )
+  }
+
+  const renderProfesionals = (matched: Professional[], id: string) => {
+
+    if(!matched || matched.length === 0) {
+      return null;
+    }
+
+    const profesionalHTML:JSX.Element[] = [];
+
+    matched.forEach((prof, index) => {
+      if(!prof.pro.avatar) {
+        return;
+      }
+
+      if(profesionalHTML.length < 4) {
+        profesionalHTML.push(
+          <ImageWrapper className='circle' zIndex={matched.length-index} onClick={() => goToProfList(id)} key={prof.id}>
+            <img src={prof.pro.avatar} alt='img'/>
+          </ImageWrapper>
+        )
+      } else if(profesionalHTML.length === 4) {
+        profesionalHTML.push(
+          <ImageWrapper lastImg className='circle' zIndex={matched.length-index} onClick={() => goToProfList(id)} key={prof.id}>
+            <i className="fas fa-ellipsis-h"></i>
+            <img src={prof.pro.avatar} alt='img'/>
+          </ImageWrapper>
+        )
+      } else {
+        return;
+      }
+    });
+
+    return profesionalHTML;
+  }
+
+  const renderShifts = () => {
+    if(!shifts || shifts.length === 0) {
+      return (
+        <NodataWrapper>
+          No Data
+        </NodataWrapper>
+      )
+    }
+
+    let date = '';
+
+    const shiftHTML:JSX.Element[] = [];
+
+    shifts?.forEach((shift, index) => {
+      const dateStart = moment(shift.dtstart).tz(shift.location.timezone);
+      const dateEnd = moment(shift.dtend).tz(shift.location.timezone);
+      let nightShift = false;
+
+      if(dateStart.format(FORMAT_DATE) !== date) {
+        shiftHTML.push(renderShiftDate(dateStart, index));
+        date = dateStart.format(FORMAT_DATE);
+      }
+
+      // handle in case of night shift
+      if(dateStart.format(FORMAT_DATE) !== dateEnd.format(FORMAT_DATE)) {
+        nightShift = true;
+      }
+
+      shiftHTML.push(
+        <ShiftContentStyled key={shift.id}>
+          <ShiftContentHeaderStyled>
+            <h4 onClick={() => goToDetailPage(shift.id)}>
+              {shift.slots} {shift.position}
+            </h4>
+            {shift.matched && shift.matched.length !== 0 ? (
+              <span>{shift.matched.length} filled</span>
+              ) : (
+              <ButtonStyled onClick={() => goToDetailPage(shift.id)}>
+                Open
+              </ButtonStyled>
+            )}
+          </ShiftContentHeaderStyled>
+          <ShiftTimeWrapper>
+            <span>
+              {dateStart.format("hh:mm a")} - {dateEnd.format("hh:mm a")} ({dateStart.format('z')}) {nightShift && '(Night shift)'}
+            </span>
+            <UserInfoImgStyled>
+              {renderProfesionals(shift.matched, shift.id)}
+            </UserInfoImgStyled>
+          </ShiftTimeWrapper>
+          <ShiftLocationWrapper>{shift.locationName} - {shift.location.address}</ShiftLocationWrapper>
+        </ShiftContentStyled>
+      )
     })
-    console.log(dateTimedata);
+    return shiftHTML;
+  }
+
   return (
     <ListWrapperStyled>
+      { error && <Notification message={error} error/>}
       <HeaderStyled>
         Shifts
       </HeaderStyled>
+      {isLoading ? (
+      <LoadingOverlayComponentStyled>
+        <img src={loadingGif} alt="loading" />
+        <span>Loading...</span>
+      </LoadingOverlayComponentStyled>
+      ) : (
       <ListContentStyled>
-        <DateHeaderStyled first>
-          Today - Wednesday, December 1
-        </DateHeaderStyled>
-        <ShiftContentStyled>
-          <ShiftContentHeaderStyled>
-            <h4>
-              16 Forklift Operators
-            </h4>
-            <span>16 filled</span>
-          </ShiftContentHeaderStyled>
-          <ShiftTimeWrapper>
-            <span>7:00 am - 3:30 pm (PST)</span>
-            <UserInfoImgStyled>
-              <ImageWrapper className='circle' style={{zIndex:'5'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'4'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'3'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'2'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper lastImg count className='circle' style={{zIndex:'1'}}>
-                <span>+2</span>
-              </ImageWrapper>
-            </UserInfoImgStyled>
-          </ShiftTimeWrapper>
-          <ShiftLocationWrapper>Jennifer's Warehouse - 309 W Cordova St, Vancouver, BC V6B 5A4, Canada</ShiftLocationWrapper>
-        </ShiftContentStyled>
-        <ShiftContentStyled>
-          <ShiftContentHeaderStyled>
-            <h4>
-              16 Forklift Operators
-            </h4>
-            <span>16 filled</span>
-          </ShiftContentHeaderStyled>
-          <ShiftTimeWrapper>
-            <span>7:00 am - 3:30 pm (PST)</span>
-            <UserInfoImgStyled>
-              <ImageWrapper className='circle' style={{zIndex:'5'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'4'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'3'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'2'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper lastImg count className='circle' style={{zIndex:'1'}}>
-                <span>+2</span>
-              </ImageWrapper>
-            </UserInfoImgStyled>
-          </ShiftTimeWrapper>
-          <ShiftLocationWrapper>Jennifer's Warehouse - 309 W Cordova St, Vancouver, BC V6B 5A4, Canada</ShiftLocationWrapper>
-        </ShiftContentStyled>
-        <ShiftContentStyled>
-          <ShiftContentHeaderStyled>
-            <h4>
-              16 Forklift Operators
-            </h4>
-            <ButtonStyled>Open</ButtonStyled>
-          </ShiftContentHeaderStyled>
-          <ShiftTimeWrapper>
-            <span>7:00 am - 3:30 pm (PST)</span>
-          </ShiftTimeWrapper>
-          <ShiftLocationWrapper>Jennifer's Warehouse - 309 W Cordova St, Vancouver, BC V6B 5A4, Canada</ShiftLocationWrapper>
-        </ShiftContentStyled>
-        <DateHeaderStyled>
-          Today - Wednesday, December 1
-        </DateHeaderStyled>
-        <ShiftContentStyled>
-          <ShiftContentHeaderStyled>
-            <h4>
-              16 Forklift Operators
-            </h4>
-            <span>16 filled</span>
-          </ShiftContentHeaderStyled>
-          <ShiftTimeWrapper>
-            <span>7:00 am - 3:30 pm (PST)</span>
-            <UserInfoImgStyled>
-              <ImageWrapper className='circle' style={{zIndex:'5'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'4'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'3'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'2'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper lastImg count className='circle' style={{zIndex:'1'}}>
-                <span>+2</span>
-              </ImageWrapper>
-            </UserInfoImgStyled>
-          </ShiftTimeWrapper>
-          <ShiftLocationWrapper>Jennifer's Warehouse - 309 W Cordova St, Vancouver, BC V6B 5A4, Canada</ShiftLocationWrapper>
-        </ShiftContentStyled>
-        <ShiftContentStyled>
-          <ShiftContentHeaderStyled>
-            <h4>
-              16 Forklift Operators
-            </h4>
-            <span>16 filled</span>
-          </ShiftContentHeaderStyled>
-          <ShiftTimeWrapper>
-            <span>7:00 am - 3:30 pm (PST)</span>
-            <UserInfoImgStyled>
-              <ImageWrapper className='circle' style={{zIndex:'5'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'4'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'3'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper className='circle' style={{zIndex:'2'}}>
-                <img src={UserPhoto} alt='img'/>
-              </ImageWrapper>
-              <ImageWrapper lastImg count className='circle' style={{zIndex:'1'}}>
-                <span>+2</span>
-              </ImageWrapper>
-            </UserInfoImgStyled>
-          </ShiftTimeWrapper>
-          <ShiftLocationWrapper>Jennifer's Warehouse - 309 W Cordova St, Vancouver, BC V6B 5A4, Canada</ShiftLocationWrapper>
-        </ShiftContentStyled>
-        <ShiftContentStyled>
-          <ShiftContentHeaderStyled>
-            <h4>
-              16 Forklift Operators
-            </h4>
-            <ButtonStyled>Open</ButtonStyled>
-          </ShiftContentHeaderStyled>
-          <ShiftTimeWrapper>
-            <span>7:00 am - 3:30 pm (PST)</span>
-          </ShiftTimeWrapper>
-          <ShiftLocationWrapper>Jennifer's Warehouse - 309 W Cordova St, Vancouver, BC V6B 5A4, Canada</ShiftLocationWrapper>
-        </ShiftContentStyled>
+        {renderShifts()}
       </ListContentStyled>
+      )}
     </ListWrapperStyled>
   )
 }
