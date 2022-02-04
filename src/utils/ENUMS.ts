@@ -5,6 +5,8 @@ export const FORMAT_FULL_DATE_MONTH_DETAIL = 'dddd, MMMM D';
 
 export const BASE_URL = 'https://099f998e-8348-4d04-83b6-891462df8f52.mock.pstmn.io/';
 
+export const AVT_LIMIT = 4;
+
 export type Contact = {
   name: string;
   phone: string;

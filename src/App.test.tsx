@@ -1,6 +1,5 @@
-// import { render, screen, waitFor } from '@testing-library/react';
-// import App from './App';
-// import ListContentShift from './module/shifts/containers/ListContentShift';
+// Sorry due to the time limit, i only develop a test for fetching data using custom hook
+
 import {QueryClient, QueryClientProvider} from 'react-query';
 import { renderHook } from '@testing-library/react-hooks';
 import { useGetShifts } from './module/shifts/hooks/shifts.hooks';

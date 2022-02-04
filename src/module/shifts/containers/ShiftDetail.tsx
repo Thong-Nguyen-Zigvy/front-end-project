@@ -86,6 +86,7 @@ const ShiftDetail = () => {
   });
 
   const renderProfesionals = () => {
+    //case when no Professionals found
     if(!shiftDetail.matched || shiftDetail.matched.length === 0 ){
       return (
         <NodataWrapper>

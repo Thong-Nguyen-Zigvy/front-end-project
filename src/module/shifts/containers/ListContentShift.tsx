@@ -15,7 +15,7 @@ import {
   NodataWrapper
 } from '../stylesheets/Shift.styles';
 import { ButtonStyled } from "../../../stylesheets/Button";
-import { FORMAT_DATE, FORMAT_FULL_DATE_MONTH, Professional } from "../../../utils/ENUMS";
+import { FORMAT_DATE, FORMAT_FULL_DATE_MONTH, Professional, AVT_LIMIT } from "../../../utils/ENUMS";
 import moment from "moment-timezone";
 import { useNavigate } from 'react-router-dom';
 import { useGetShifts } from "../hooks/shifts.hooks";
@@ -31,11 +31,14 @@ const ListContentShift = () => {
   const goToDetailPage = (id: string) => {
     navigate(`/${id}`);
   }
+
+  // navigate to list professinal in detail page
   const goToProfList = (id: string) => {
     navigate(`/${id}/list`);
   }
   
-  const renderShiftDate = (dateStart: moment.Moment, index: number) => {
+  const renderDateHeader = (dateStart: moment.Moment, index: number) => {
+    // hanlde start day is today
     if(currentDate.format(FORMAT_DATE) === dateStart.format(FORMAT_DATE)){
       return (
         <DateHeaderStyled first={index === 0} key={dateStart.format(FORMAT_DATE)}>
@@ -63,13 +66,14 @@ const ListContentShift = () => {
         return;
       }
 
-      if(profesionalHTML.length < 4) {
+      if(profesionalHTML.length < AVT_LIMIT) {
         profesionalHTML.push(
           <ImageWrapper className='circle' zIndex={matched.length-index} onClick={() => goToProfList(id)} key={prof.id}>
             <img src={prof.pro.avatar} alt='img'/>
           </ImageWrapper>
         )
-      } else if(profesionalHTML.length === 4) {
+      } else if(profesionalHTML.length === AVT_LIMIT) {
+        //render last avatar
         profesionalHTML.push(
           <ImageWrapper lastImg className='circle' zIndex={matched.length-index} onClick={() => goToProfList(id)} key={prof.id}>
             <i className="fas fa-ellipsis-h"></i>
@@ -85,6 +89,7 @@ const ListContentShift = () => {
   }
 
   const renderShifts = () => {
+    
     if(!shifts || shifts.length === 0) {
       return (
         <NodataWrapper>
@@ -102,8 +107,9 @@ const ListContentShift = () => {
       const dateEnd = moment(shift.dtend).tz(shift.location.timezone);
       let nightShift = false;
 
+      // rendering Day and month header
       if(dateStart.format(FORMAT_DATE) !== date) {
-        shiftHTML.push(renderShiftDate(dateStart, index));
+        shiftHTML.push(renderDateHeader(dateStart, index));
         date = dateStart.format(FORMAT_DATE);
       }
 
